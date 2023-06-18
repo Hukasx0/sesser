@@ -38,6 +38,8 @@ impl Service<Request<Incoming>> for Responder {
         let res = match (req.method(), req.uri().path()) {
             (&Method::POST, "/create") => mk_response(format!("Here you can create new hashmap of values\n{:?}", self)),
             (&Method::POST, "/generate") => mk_response(format!("Here you can generate new hash value by providing hashmap name and time limit\n{:?}", self)),
+            (&Method::POST, "/check") => mk_response(format!("Here you can check if value exists in HashMap, and get True or False\n{:?}", self)),
+            (&Method::POST, "/map_check") => mk_response(format!("here you can check hashmap with given name exists, and get True or False\n{:?}", self)),
             (&Method::POST, "/remove") => mk_response(format!("Here you can remove a data from hashmap by providing a value\n{:?}", self)),
             (&Method::POST, "/drop") => mk_response(format!("Here yoy can remove hashmap by providing its name\n{:?}", self)),
             _ =>  return Box::pin(async { mk_response("Unknown operation, available (only POST requests):\n/create\n/generate\n/remove\n/drop".into()) }),
