@@ -7,7 +7,7 @@ use http_body_util::Full;
 use hyper::body::Bytes;
 use hyper::server::conn::http1;
 use hyper::service::Service;
-use hyper::{Request, Response, body::Incoming};
+use hyper::{Request, Response, Method, body::Incoming};
 use tokio::net::TcpListener;
 use std::sync::Arc;
 use std::pin::Pin;
@@ -35,12 +35,12 @@ impl Service<Request<Incoming>> for Responder {
             Ok(Response::builder().body(Full::new(Bytes::from(s))).unwrap())
         }
 
-        let res = match req.uri().path() {
-            "/create" => mk_response(format!("Here you can create new hashmap of values\n{:?}", self)),
-            "/generate" => mk_response(format!("Here you can generate new hash value by providing hashmap name and time limit\n{:?}", self)),
-            "/remove" => mk_response(format!("Here you can remove a data from hashmap by providing a value\n{:?}", self)),
-            "/drop" => mk_response(format!("Here yoy can remove hashmap by providing its name\n{:?}", self)),
-            _ =>  return Box::pin(async { mk_response("Unknown operation, available:\n/create\n/generate\n/remove\n/drop".into()) }),
+        let res = match (req.method(), req.uri().path()) {
+            (&Method::POST, "/create") => mk_response(format!("Here you can create new hashmap of values\n{:?}", self)),
+            (&Method::POST, "/generate") => mk_response(format!("Here you can generate new hash value by providing hashmap name and time limit\n{:?}", self)),
+            (&Method::POST, "/remove") => mk_response(format!("Here you can remove a data from hashmap by providing a value\n{:?}", self)),
+            (&Method::POST, "/drop") => mk_response(format!("Here yoy can remove hashmap by providing its name\n{:?}", self)),
+            _ =>  return Box::pin(async { mk_response("Unknown operation, available (only POST requests):\n/create\n/generate\n/remove\n/drop".into()) }),
         };
         Box::pin(async { res })
     }
