@@ -1,15 +1,17 @@
 use sha2::{Digest, Sha256};
 use std::collections::HashMap;
 use std::time::SystemTime;
-use tokio::sync::Mutex;
-use std::convert::Infallible;
+use tokio::sync::{Mutex};
 use std::net::SocketAddr;
 use http_body_util::Full;
 use hyper::body::Bytes;
 use hyper::server::conn::http1;
-use hyper::service::service_fn;
-use hyper::{Request, Response};
+use hyper::service::Service;
+use hyper::{Request, Response, body::Incoming};
 use tokio::net::TcpListener;
+use std::sync::Arc;
+use std::pin::Pin;
+use std::future::Future;
 
 
 fn sha2_hash(data: &str) -> [u8; 32] {
@@ -18,8 +20,30 @@ fn sha2_hash(data: &str) -> [u8; 32] {
     hasher.finalize().into()
 }
 
-async fn server_response(_: Request<hyper::body::Incoming>) -> Result<Response<Full<Bytes>>, Infallible> {
-    Ok(Response::new(Full::new(Bytes::from("Hello world!"))))
+#[derive(Debug)]
+struct Responder {
+    db: AsyncDatabase,
+}
+
+impl Service<Request<Incoming>> for Responder {
+    type Response = Response<Full<Bytes>>;
+    type Error = hyper::Error;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+
+    fn call(&mut self, req: Request<Incoming>) -> Self::Future {
+        fn mk_response(s: String) -> Result<Response<Full<Bytes>>, hyper::Error> {
+            Ok(Response::builder().body(Full::new(Bytes::from(s))).unwrap())
+        }
+
+        let res = match req.uri().path() {
+            "/create" => mk_response(format!("Here you can create new hashmap of values\n{:?}", self)),
+            "/generate" => mk_response(format!("Here you can generate new hash value by providing hashmap name and time limit\n{:?}", self)),
+            "/remove" => mk_response(format!("Here you can remove a data from hashmap by providing a value\n{:?}", self)),
+            "/drop" => mk_response(format!("Here yoy can remove hashmap by providing its name\n{:?}", self)),
+            _ =>  return Box::pin(async { mk_response("Unknown operation, available:\n/create\n/generate\n/remove\n/drop".into()) }),
+        };
+        Box::pin(async { res })
+    }
 }
 
 /* Database :=
@@ -32,7 +56,7 @@ async fn server_response(_: Request<hyper::body::Incoming>) -> Result<Response<F
 */
 type Database = HashMap<String,HashMap<String,Option<SystemTime>>>;
 
-type AsyncDatabase = Mutex<Database>;
+type AsyncDatabase = Arc<Mutex<Database>>;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
@@ -43,7 +67,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         let (stream, _) = listener.accept().await?;
         tokio::task::spawn(async move {
             if let Err(err) = http1::Builder::new()
-                .serve_connection(stream, service_fn(server_response))
+                .serve_connection(stream, Responder {
+                    db: Arc::new(Mutex::new(HashMap::new())),
+                },)
                 .await
             {
                 eprintln!("Error serving connection: {:?}", err);
