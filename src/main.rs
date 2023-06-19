@@ -1,6 +1,3 @@
-use sha2::{Digest, Sha256};
-use std::collections::HashMap;
-use std::time::SystemTime;
 use tokio::sync::{Mutex};
 use std::net::SocketAddr;
 use http_body_util::Full;
@@ -14,11 +11,8 @@ use std::pin::Pin;
 use std::future::Future;
 use http_body_util::BodyExt;
 
-fn sha2_hash(data: &str) -> [u8; 32] {
-    let mut hasher = Sha256::new();
-    hasher.update(data.as_bytes());
-    hasher.finalize().into()
-}
+mod database;
+use database::Database;
 
 #[derive(Debug)]
 struct Responder {
@@ -61,7 +55,7 @@ impl Service<Request<Incoming>> for Responder {
                 expiration date
              >>
 */
-type Database = HashMap<String,HashMap<String,Option<SystemTime>>>;
+//type Database = HashMap<String,HashMap<String,Option<SystemTime>>>;
 
 type AsyncDatabase = Arc<Mutex<Database>>;
 
@@ -75,7 +69,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         tokio::task::spawn(async move {
             if let Err(err) = http1::Builder::new()
                 .serve_connection(stream, Responder {
-                    db: Arc::new(Mutex::new(HashMap::new())),
+                    db: Arc::new(Mutex::new(Database::new())),
                 },)
                 .await
             {
