@@ -12,7 +12,7 @@ use tokio::net::TcpListener;
 use std::sync::Arc;
 use std::pin::Pin;
 use std::future::Future;
-
+use http_body_util::BodyExt;
 
 fn sha2_hash(data: &str) -> [u8; 32] {
     let mut hasher = Sha256::new();
@@ -35,16 +35,21 @@ impl Service<Request<Incoming>> for Responder {
             Ok(Response::builder().body(Full::new(Bytes::from(s))).unwrap())
         }
 
-        let res = match (req.method(), req.uri().path()) {
-            (&Method::POST, "/create") => mk_response(format!("Here you can create new hashmap of values\n{:?}", self)),
-            (&Method::POST, "/generate") => mk_response(format!("Here you can generate new hash value by providing hashmap name and time limit\n{:?}", self)),
-            (&Method::POST, "/check") => mk_response(format!("Here you can check if value exists in HashMap, and get True or False\n{:?}", self)),
-            (&Method::POST, "/map_check") => mk_response(format!("here you can check hashmap with given name exists, and get True or False\n{:?}", self)),
-            (&Method::POST, "/remove") => mk_response(format!("Here you can remove a data from hashmap by providing a value\n{:?}", self)),
-            (&Method::POST, "/drop") => mk_response(format!("Here yoy can remove hashmap by providing its name\n{:?}", self)),
-            _ =>  return Box::pin(async { mk_response("Unknown operation, available (only POST requests):\n/create\n/generate\n/remove\n/drop".into()) }),
-        };
-        Box::pin(async { res })
+        Box::pin(async move { 
+            let method = req.method().clone();
+            let path = req.uri().path().to_owned();
+            let body_str = req.collect().await?.to_bytes().iter().cloned().collect::<Vec<u8>>();
+            println!("{}", String::from_utf8_lossy(&body_str));
+            let x = match (&method, path.as_str()) {
+                (&Method::POST, "/create") => mk_response(format!("Here you can create new hashmap of values\n")),
+                (&Method::POST, "/generate") => mk_response(format!("Here you can generate new hash value by providing hashmap name and time limit\n")),
+                (&Method::POST, "/check") => mk_response(format!("Here you can check if value exists in HashMap, and get True or False\n")),
+                (&Method::POST, "/map_check") => mk_response(format!("here you can check hashmap with given name exists, and get True or False\n")),
+                (&Method::POST, "/remove") => mk_response(format!("Here you can remove a data from hashmap by providing a value\n")),
+                (&Method::POST, "/drop") => mk_response(format!("Here yoy can remove hashmap by providing its name\n")),
+                _ =>  mk_response("Unknown operation, available (only POST requests):\n/create\n/generate\n/remove\n/drop".into()),
+            };
+        x })
     }
 }
 
