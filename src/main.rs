@@ -17,7 +17,7 @@ use database::Database;
 
 #[derive(Deserialize)]
 struct CreateTable {
-    name: String,
+    table_name: String,
 }
 
 #[derive(Deserialize)]
@@ -75,11 +75,11 @@ impl Service<Request<Incoming>> for Responder {
                 (&Method::POST, "/create") =>  {
                     match serde_urlencoded::from_str::<CreateTable>(&body_str.to_owned()) {
                         Ok(form_data) => {
-                            if db.lock().await.check_table_exists(&form_data.name) {
+                            if db.lock().await.check_table_exists(&form_data.table_name) {
                                 println!("{}", format!("{:?}", db.lock().await)); // debug
                                 return mk_response(format!("Table name must be unique!\n"));
                             } else {
-                                db.lock().await.create_table(&form_data.name);
+                                db.lock().await.create_table(&form_data.table_name);
                                 println!("{}", format!("{:?}", db.lock().await)); // debug
                                 return mk_response(format!("Created table successfully!\n"));
                             }
@@ -91,9 +91,38 @@ impl Service<Request<Incoming>> for Responder {
                 },
                 (&Method::POST, "/generate") => mk_response(format!("Here you can generate new hash value by providing hashmap name and time limit\n")),
                 (&Method::POST, "/check") => mk_response(format!("Here you can check if value exists in HashMap, and get True or False\n")),
-                (&Method::POST, "/check_table") => mk_response(format!("here you can check hashmap with given name exists, and get True or False\n")),
+                (&Method::POST, "/check_table") => {
+                    match serde_urlencoded::from_str::<CheckTable>(&body_str.to_owned()) {
+                        Ok(form_data) => {
+                            if db.lock().await.check_table_exists(&form_data.table_name) {
+                                return mk_response("True".into());
+                            } else {
+                                return mk_response("False".into());
+                            }
+                        }
+                        Err(_) => {
+                            return mk_response(format!("query /create accepts only unique database name\n"));
+                        }
+                    }
+                },
                 (&Method::POST, "/remove") => mk_response(format!("Here you can remove a data from hashmap by providing a value\n")),
-                (&Method::POST, "/drop") => mk_response(format!("Here yoy can remove hashmap by providing its name\n")),
+                (&Method::POST, "/drop") => {
+                    match serde_urlencoded::from_str::<DropTable>(&body_str.to_owned()) {
+                        Ok(form_data) => {
+                            if db.lock().await.check_table_exists(&form_data.table_name) {
+                                db.lock().await.drop_table(&form_data.table_name);
+                                println!("{}", format!("{:?}", db.lock().await)); // debug
+                                return mk_response(format!("Removed table successfully!\n"));
+                            } else {
+                                println!("{}", format!("{:?}", db.lock().await)); // debug
+                                return mk_response(format!("table with given name does not exist\n"));
+                            }
+                        }
+                        Err(_) => {
+                            return mk_response(format!("query /create accepts only unique database name\n"));
+                        }
+                    }
+                },
                 _ =>  mk_response("Unknown operation, available (only POST requests):\n/create\n/generate\n/remove\n/drop".into()),
             };
         x })
