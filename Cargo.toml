@@ -12,3 +12,5 @@ hyper = { version = "1.0.0-rc.3", features = ["full"] }
 http-body-util = "0.1.0-rc.2" 
 rand = "0.8.5"
 hex = "0.4.3"
+serde = { version="1.0.164", features = ["derive"] }
+serde_urlencoded = "0.7.1"

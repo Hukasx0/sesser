@@ -26,7 +26,17 @@ impl Database {
         self.tables.insert(table_name.to_owned(), HashMap::new());
     }
 
-    pub fn insert_data(&mut self, table_name: &str, _expiration: u64) -> String {
+    pub fn check_table_exists(&self, table_name: &str) -> bool {
+        if let Some(_) = self.tables.get(table_name) {
+            return true;
+        } false
+    }
+
+    pub fn drop_table(&mut self, table_name: &str) {
+        self.tables.remove(table_name);
+    }
+
+    pub fn generate_value(&mut self, table_name: &str, _expiration: u64) -> String {
         if let Some(table) = self.tables.get_mut(table_name) {
             let generated_hash = sha2_hash(&random_string());
             table.insert(generated_hash.to_string(), 0);
@@ -38,6 +48,13 @@ impl Database {
     pub fn check_value_exists(&self, table_name: &str, key_val: &str) -> bool {
         if let Some(table) = self.tables.get(table_name) {
             return table.contains_key(key_val);
+        } false
+    }
+
+    pub fn remove_value(&mut self, table_name: &str, key_val: &str) -> bool {
+        if let Some(table) = self.tables.get_mut(table_name) {
+            table.remove(key_val);
+            return true;
         } false
     }
 }
