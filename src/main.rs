@@ -89,8 +89,39 @@ impl Service<Request<Incoming>> for Responder {
                         }
                     }
                 },
-                (&Method::POST, "/generate") => mk_response(format!("Here you can generate new hash value by providing hashmap name and time limit\n")),
-                (&Method::POST, "/check") => mk_response(format!("Here you can check if value exists in HashMap, and get True or False\n")),
+                (&Method::POST, "/generate") => {
+                    match serde_urlencoded::from_str::<GenerateValue>(&body_str.to_owned()) {
+                        Ok(form_data) => {
+                            if db.lock().await.check_table_exists(&form_data.table_name) {
+                                let key = db.lock().await.generate_value(&form_data.table_name, form_data.expiration);
+                                println!("{}", format!("{:?}", db.lock().await)); // debug
+                                return mk_response(format!("{}", key));
+                            } else {
+                                println!("{}", format!("{:?}", db.lock().await)); // debug
+                                return mk_response(format!("Cannot add value to this table, because this table does not exist\n"));
+                            }
+                        }
+                        Err(_) => {
+                            return mk_response(format!("query /create accepts only unique database name\n"));
+                        }
+                    }
+                }, 
+                (&Method::POST, "/check") => {
+                    match serde_urlencoded::from_str::<CheckValue>(&body_str.to_owned()) {
+                        Ok(form_data) => {
+                            if db.lock().await.check_table_exists(&form_data.table_name) {
+                                println!("{}", format!("{:?}", db.lock().await)); // debug
+                                return mk_response(format!("{}", db.lock().await.check_value_exists(&form_data.table_name, &form_data.value)));
+                            } else {
+                                println!("{}", format!("{:?}", db.lock().await)); // debug
+                                return mk_response(format!("Cannot check value in this table, because this table does not exist\n"));
+                            }
+                        }
+                        Err(_) => {
+                            return mk_response(format!("query /create accepts only unique database name\n"));
+                        }
+                    }
+                },
                 (&Method::POST, "/check_table") => {
                     match serde_urlencoded::from_str::<CheckTable>(&body_str.to_owned()) {
                         Ok(form_data) => {
@@ -105,7 +136,23 @@ impl Service<Request<Incoming>> for Responder {
                         }
                     }
                 },
-                (&Method::POST, "/remove") => mk_response(format!("Here you can remove a data from hashmap by providing a value\n")),
+                (&Method::POST, "/remove") => {
+                    match serde_urlencoded::from_str::<RemoveValue>(&body_str.to_owned()) {
+                        Ok(form_data) => {
+                            if db.lock().await.check_table_exists(&form_data.table_name) {
+                                db.lock().await.remove_value(&form_data.table_name, &form_data.value);
+                                println!("{}", format!("{:?}", db.lock().await)); // debug
+                                return mk_response(format!("Removed value successfully!\n"));
+                            } else {
+                                println!("{}", format!("{:?}", db.lock().await)); // debug
+                                return mk_response(format!("Cannot remove value from a table that does not exist\n"));
+                            }
+                        }
+                        Err(_) => {
+                            return mk_response(format!("query /create accepts only unique database name\n"));
+                        }
+                    }
+                },
                 (&Method::POST, "/drop") => {
                     match serde_urlencoded::from_str::<DropTable>(&body_str.to_owned()) {
                         Ok(form_data) => {

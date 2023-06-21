@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use rand::distributions::{Alphanumeric, DistString};
 use sha2::{Digest, Sha256};
+use tokio::time::{Instant, Duration};
 
 fn random_string() -> String {
     Alphanumeric.sample_string(&mut rand::thread_rng(), 32)
@@ -14,7 +15,7 @@ fn sha2_hash(data: &str) -> String {
 
 #[derive(Debug)]
 pub struct Database {
-    tables: HashMap<String, HashMap<String, u64>>,
+    tables: HashMap<String, HashMap<String, Instant>>,
 }
 
 impl Database {
@@ -36,10 +37,11 @@ impl Database {
         self.tables.remove(table_name);
     }
 
-    pub fn generate_value(&mut self, table_name: &str, _expiration: u64) -> String {
+    pub fn generate_value(&mut self, table_name: &str, expiration: u64) -> String {
         if let Some(table) = self.tables.get_mut(table_name) {
             let generated_hash = sha2_hash(&random_string());
-            table.insert(generated_hash.to_string(), 0);
+            let expires = Instant::now()+Duration::from_secs(expiration);
+            table.insert(generated_hash.to_string(), expires);
             return generated_hash;
         }
         String::new()
@@ -51,10 +53,9 @@ impl Database {
         } false
     }
 
-    pub fn remove_value(&mut self, table_name: &str, key_val: &str) -> bool {
+    pub fn remove_value(&mut self, table_name: &str, key_val: &str){
         if let Some(table) = self.tables.get_mut(table_name) {
             table.remove(key_val);
-            return true;
-        } false
+        };
     }
 }
