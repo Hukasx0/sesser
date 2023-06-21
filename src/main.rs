@@ -6,6 +6,7 @@ use hyper::server::conn::http1;
 use hyper::service::Service;
 use hyper::{Request, Response, Method, body::Incoming};
 use tokio::net::TcpListener;
+use tokio::time::{interval, Duration};
 use std::sync::Arc;
 use std::pin::Pin;
 use std::future::Future;
@@ -192,13 +193,23 @@ type AsyncDatabase = Arc<Mutex<Database>>;
 async fn main() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let addr = SocketAddr::from(([127, 0, 0, 1], 5379));
     let listener = TcpListener::bind(addr).await?;
+    let database = Arc::new(Mutex::new(Database::new()));
     println!("Sesser works on http://127.0.0.1:5379");
+    let db_clone = Arc::clone(&database); 
+    tokio::spawn(async move {
+        let mut filter_interval = interval(Duration::from_secs(120)); 
+        loop {
+            filter_interval.tick().await;
+            db_clone.lock().await.filter_expired();
+        }
+    });
     loop {
         let (stream, _) = listener.accept().await?;
+        let db_clone = Arc::clone(&database);
         tokio::task::spawn(async move {
             if let Err(err) = http1::Builder::new()
                 .serve_connection(stream, Responder {
-                    db: Arc::new(Mutex::new(Database::new())),
+                    db: db_clone,
                 },)
                 .await
             {

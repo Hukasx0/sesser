@@ -13,7 +13,7 @@ fn sha2_hash(data: &str) -> String {
     hex::encode::<[u8; 32]>(hasher.finalize().into())
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Database {
     tables: HashMap<String, HashMap<String, Instant>>,
 }
@@ -49,7 +49,11 @@ impl Database {
 
     pub fn check_value_exists(&self, table_name: &str, key_val: &str) -> bool {
         if let Some(table) = self.tables.get(table_name) {
-            return table.contains_key(key_val);
+            if let Some(values_time) = table.get(key_val){
+                return values_time > &Instant::now();
+            } else {
+                return false;
+            }
         } false
     }
 
@@ -57,5 +61,12 @@ impl Database {
         if let Some(table) = self.tables.get_mut(table_name) {
             table.remove(key_val);
         };
+    }
+
+    pub fn filter_expired(&mut self) {
+        let time_now = Instant::now();
+        for table in self.tables.values_mut() {
+            table.retain(|_, &mut value_time| value_time >= time_now);
+        }
     }
 }
