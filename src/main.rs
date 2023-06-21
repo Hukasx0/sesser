@@ -77,16 +77,16 @@ impl Service<Request<Incoming>> for Responder {
                     match serde_urlencoded::from_str::<CreateTable>(&body_str.to_owned()) {
                         Ok(form_data) => {
                             if db.lock().await.check_table_exists(&form_data.table_name) {
-                                println!("{}", format!("{:?}", db.lock().await)); // debug
-                                return mk_response(format!("Table name must be unique!\n"));
+                        //        println!("{}", format!("{:?}", db.lock().await)); // debug
+                                return mk_response(format!("Table name must be unique!"));
                             } else {
                                 db.lock().await.create_table(&form_data.table_name);
-                                println!("{}", format!("{:?}", db.lock().await)); // debug
-                                return mk_response(format!("Created table successfully!\n"));
+                        //        println!("{}", format!("{:?}", db.lock().await)); // debug
+                                return mk_response(format!("Created table successfully!"));
                             }
                         }
                         Err(_) => {
-                            return mk_response(format!("query /create accepts only unique database name\n"));
+                            return mk_response(format!("query /create accepts only unique database name"));
                         }
                     }
                 },
@@ -95,15 +95,15 @@ impl Service<Request<Incoming>> for Responder {
                         Ok(form_data) => {
                             if db.lock().await.check_table_exists(&form_data.table_name) {
                                 let key = db.lock().await.generate_value(&form_data.table_name, form_data.expiration);
-                                println!("{}", format!("{:?}", db.lock().await)); // debug
+                          //      println!("{}", format!("{:?}", db.lock().await)); // debug
                                 return mk_response(format!("{}", key));
                             } else {
-                                println!("{}", format!("{:?}", db.lock().await)); // debug
-                                return mk_response(format!("Cannot add value to this table, because this table does not exist\n"));
+                           //     println!("{}", format!("{:?}", db.lock().await)); // debug
+                                return mk_response(format!("Cannot add value to this table, because this table does not exist"));
                             }
                         }
                         Err(_) => {
-                            return mk_response(format!("query /create accepts only unique database name\n"));
+                            return mk_response(format!("query /generate accepts only the name of the table in which the value is to be kept and the length of the interval after which the value is to expire"));
                         }
                     }
                 }, 
@@ -111,15 +111,15 @@ impl Service<Request<Incoming>> for Responder {
                     match serde_urlencoded::from_str::<CheckValue>(&body_str.to_owned()) {
                         Ok(form_data) => {
                             if db.lock().await.check_table_exists(&form_data.table_name) {
-                                println!("{}", format!("{:?}", db.lock().await)); // debug
+                          //      println!("{}", format!("{:?}", db.lock().await)); // debug
                                 return mk_response(format!("{}", db.lock().await.check_value_exists(&form_data.table_name, &form_data.value)));
                             } else {
-                                println!("{}", format!("{:?}", db.lock().await)); // debug
-                                return mk_response(format!("Cannot check value in this table, because this table does not exist\n"));
+                         //       println!("{}", format!("{:?}", db.lock().await)); // debug
+                                return mk_response(format!("Cannot check value in this table, because this table does not exist"));
                             }
                         }
                         Err(_) => {
-                            return mk_response(format!("query /create accepts only unique database name\n"));
+                            return mk_response(format!("query /check only accepts the name of an existing table and the value stored in the table"));
                         }
                     }
                 },
@@ -133,7 +133,7 @@ impl Service<Request<Incoming>> for Responder {
                             }
                         }
                         Err(_) => {
-                            return mk_response(format!("query /create accepts only unique database name\n"));
+                            return mk_response(format!("query /check_table only accepts the name of an existing table"));
                         }
                     }
                 },
@@ -142,15 +142,15 @@ impl Service<Request<Incoming>> for Responder {
                         Ok(form_data) => {
                             if db.lock().await.check_table_exists(&form_data.table_name) {
                                 db.lock().await.remove_value(&form_data.table_name, &form_data.value);
-                                println!("{}", format!("{:?}", db.lock().await)); // debug
-                                return mk_response(format!("Removed value successfully!\n"));
+                          //      println!("{}", format!("{:?}", db.lock().await)); // debug
+                                return mk_response(format!("Removed value successfully!"));
                             } else {
-                                println!("{}", format!("{:?}", db.lock().await)); // debug
-                                return mk_response(format!("Cannot remove value from a table that does not exist\n"));
+                         //       println!("{}", format!("{:?}", db.lock().await)); // debug
+                                return mk_response(format!("Cannot remove value from a table that does not exist"));
                             }
                         }
                         Err(_) => {
-                            return mk_response(format!("query /create accepts only unique database name\n"));
+                            return mk_response(format!("query /remove only accepts the existing table name and the value stored in the table"));
                         }
                     }
                 },
@@ -159,33 +159,23 @@ impl Service<Request<Incoming>> for Responder {
                         Ok(form_data) => {
                             if db.lock().await.check_table_exists(&form_data.table_name) {
                                 db.lock().await.drop_table(&form_data.table_name);
-                                println!("{}", format!("{:?}", db.lock().await)); // debug
-                                return mk_response(format!("Removed table successfully!\n"));
+                         //       println!("{}", format!("{:?}", db.lock().await)); // debug
+                                return mk_response(format!("Removed table successfully!"));
                             } else {
-                                println!("{}", format!("{:?}", db.lock().await)); // debug
-                                return mk_response(format!("table with given name does not exist\n"));
+                       //         println!("{}", format!("{:?}", db.lock().await)); // debug
+                                return mk_response(format!("table with given name does not exist"));
                             }
                         }
                         Err(_) => {
-                            return mk_response(format!("query /create accepts only unique database name\n"));
+                            return mk_response(format!("query /drop only accepts the name of an existing table"));
                         }
                     }
                 },
-                _ =>  mk_response("Unknown operation, available (only POST requests):\n/create\n/generate\n/remove\n/drop".into()),
+                _ =>  mk_response("Unknown operation, available (only POST requests):\n/create\n/generate\n/check\n/check_table\n/remove\n/drop".into()),
             };
         x })
     }
 }
-
-/* Database :=
-    hashmap< 
-            name - for example 'sessions' or 'api_keys',
-             hashmap< for holding multiple values, for example multiple api keys
-                value
-                expiration date
-             >>
-*/
-//type Database = HashMap<String,HashMap<String,Option<SystemTime>>>;
 
 type AsyncDatabase = Arc<Mutex<Database>>;
 
