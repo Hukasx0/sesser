@@ -34,6 +34,11 @@ struct CheckValue {
 }
 
 #[derive(Deserialize)]
+struct ListValues {
+    table_name: String,
+}
+
+#[derive(Deserialize)]
 struct CheckTable {
     table_name: String,
 }
@@ -120,6 +125,22 @@ impl Service<Request<Incoming>> for Responder {
                         }
                         Err(_) => {
                             return mk_response(format!("query /check only accepts the name of an existing table and the value stored in the table"));
+                        }
+                    }
+                },
+                (&Method::POST, "/list") => {
+                    match serde_urlencoded::from_str::<ListValues>(&body_str.to_owned()) {
+                        Ok(form_data) => {
+                            if db.lock().await.check_table_exists(&form_data.table_name) {
+                          //      println!("{}", format!("{:?}", db.lock().await)); // debug
+                                return mk_response(format!("{}", db.lock().await.list_values(&form_data.table_name)));
+                            } else {
+                         //       println!("{}", format!("{:?}", db.lock().await)); // debug
+                                return mk_response(format!("Cannot get values from this table, because this table does not exist"));
+                            }
+                        }
+                        Err(_) => {
+                            return mk_response(format!("query /list only accepts the name of an existing table"));
                         }
                     }
                 },

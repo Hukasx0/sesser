@@ -47,6 +47,12 @@ impl Database {
         String::new()
     }
 
+    pub fn list_values(&self, table_name: &str) -> String {
+        if let Some(table) =  self.tables.get(table_name) {
+            return table.keys().map(|value| value.to_string()).collect::<Vec<String>>().join(" ")
+        } String::new()
+    }
+
     pub fn check_value_exists(&self, table_name: &str, key_val: &str) -> bool {
         if let Some(table) = self.tables.get(table_name) {
             if let Some(values_time) = table.get(key_val){
